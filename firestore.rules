@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // In this system, we store admins in a dedicated collection for security
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) && 
+             data.uid == request.auth.uid &&
+             data.role in ['student', 'admin'] &&
+             data.email is string && data.email.size() <= 256;
+    }
+
+    function isValidExam(data) {
+      return data.keys().hasAll(['title', 'type', 'questions']) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.type in ['mcq', 'descriptive'] &&
+             data.questions is list && data.questions.size() <= 100;
+    }
+
+    function isValidExamResult(data) {
+      return data.keys().hasAll(['examId', 'studentId', 'score', 'percentage']) &&
+             data.studentId == request.auth.uid &&
+             data.score is number && data.score >= 0 &&
+             data.percentage is number && data.percentage >= 0 && data.percentage <= 100;
+    }
+
+    // --- Collection Routes ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['preferences', 'displayName', 'stats']);
+    }
+
+    match /exams/{examId} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin() && isValidExam(incoming());
+      allow update: if isAdmin() && isValidExam(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /results/{resultId} {
+      allow get: if isSignedIn() && (existing().studentId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().studentId == request.auth.uid && isValidExamResult(incoming());
+      // Results are immutable after creation by student
+      allow update: if isAdmin(); 
+    }
+
+    // Admin collection for role bootstrap
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+    }
+  }
+}

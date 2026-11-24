@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with accessibility and performance data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "accessibilityMode": { "type": "string" },
+            "highContrast": { "type": "boolean" },
+            "largeFont": { "type": "boolean" },
+            "speechSpeed": { "type": "number" },
+            "speechPitch": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "Examination details including questions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["mcq", "descriptive"] },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "durationMinutes": { "type": "number" },
+        "questions": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Question" }
+        },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "questions"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A single examination question",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "number" },
+        "points": { "type": "number" }
+      }
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Record of a student's completion of an exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "score": { "type": "number" },
+        "percentage": { "type": "number" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "aiAnalysis": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Public and private user profile data"
+    },
+    "/exams/{examId}": {
+      "schema": "Exam",
+      "description": "Collection of all available exams"
+    },
+    "/results/{resultId}": {
+      "schema": "ExamResult",
+      "description": "Historical exam performance records"
+    }
+  }
+}

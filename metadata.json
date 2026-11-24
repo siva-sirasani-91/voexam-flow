@@ -1,0 +1,8 @@
+{
+  "name": "VoxExam Pro",
+  "description": "Professional AI-powered voice-based examination platform for inclusive education and accessible assessment.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
